@@ -18,27 +18,30 @@
 <body>
     <header>
         <h1>Portál zranitelnosti krajiny ČR</h1>
-        
+        <--! vytvoření tlačítka pro přechod na stránku s nápovědou -->
+            <a href="#" class="button">Nápověda</a>
     </header>
     <main>
-    <div id="viewDiv"></div>
-    <script>
-        require([
-            "esri/Map",
-            "esri/views/MapView"
-        ], function(Map, MapView) {
-            var map = new Map({
-                basemap: "streets"
-            });
+        <div id="viewDiv"></div>
+        <script>
+            require([
+                "esri/Map",
+                "esri/views/MapView"
+            ], function(Map, MapView) {
+                var map = new Map({
+                    basemap: "streets"
+                });
 
-            var view = new MapView({
-                container: "viewDiv",
-                map: map,
-                center: [17.9712, 49.4712], // Koordináty Valašského Meziříčí
-                zoom: 8
+                var view = new MapView({
+                    container: "viewDiv",
+                    map: map,
+                    center: [17.9712, 49.4712], // Koordináty Valašského Meziříčí
+                    zoom: 8
+                });
             });
-        });
-    </script>
+        </script>
+            < --! vytvoření tlačítka pro přechod na další html stránku "tlačítko generování georeportu" -->
+                <a href="#" class="button">Přejít na georeport</a>
     </main>
     <footer>
         <p>&copy; Portál zranitelnosti krajiny, Univerzita Palackého v Olomouci</p>
