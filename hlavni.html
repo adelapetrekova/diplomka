@@ -42,8 +42,9 @@
             "esri/layers/GraphicsLayer",
             "esri/widgets/LayerList",
             "esri/widgets/BasemapToggle",
-            "esri/Basemap"
-        ], function(esriConfig, Portal, PortalItem, MapView, WebMap, Sketch, GraphicsLayer, LayerList, BasemapToggle, Basemap) {
+            "esri/Basemap",
+            "esri/layers/GroupLayer"
+        ], function(esriConfig, Portal, PortalItem, MapView, WebMap, Sketch, GraphicsLayer, LayerList, BasemapToggle, Basemap, GroupLayer) {
             esriConfig.portalUrl = "https://www.arcgis.com"; // Ujistěte se, že je správně nakonfigurován portál
 
             var portal = new Portal();
@@ -61,7 +62,10 @@
                         container: "viewDiv",
                         map: webmap,
                         center: [14.96, 49.37], // Souřadnice středu mapy
-                        zoom: 11
+                        zoom: 11,
+                        spatialReference: {
+                            wkid: 3857 // Nastavte prostorovou referenci na EPSG:3857
+                        }
                     });
 
                     var graphicsLayer = new GraphicsLayer();
@@ -93,11 +97,12 @@
                         view: view,
                         listItemCreatedFunction: function(event) {
                             var item = event.item;
-                            if (item.layer.type === "group") {
+                            if (item.layer.type === "group" || item.layer.type === "GroupLayer") {
                                 item.panel = {
                                     content: "legend",
                                     open: true
                                 };
+                                item.title = item.layer.title || "Skupinová vrstva";
                             }
                         }
                     });
@@ -108,19 +113,35 @@
                         view: view,
                         nextBasemap: new Basemap({
                             portalItem: {
-                                id: "52bdc7ab7fb044d98add148764eaa30a" // Zde vložte ID hybridní podkladové mapy
+                                id: "86265e5a4bbb4187a59719cf134e0018" // Zde vložte ID hybridní podkladové mapy
                             }
                         })
                     });
                     view.ui.add(basemapToggle, "bottom-right");
 
                     // Přidání výpisu chyb do konzole
-                    basemapToggle.watch("activeBasemap", function(newValue, oldValue) {
-                        console.log("Přepínání podkladové mapy z:", oldValue, "na:", newValue);
+                    basemapToggle.nextBasemap.load().then(function() {
+                        console.log("Hybridní podkladová mapa načtena úspěšně.");
+                    }).catch(function(error) {
+                        console.error("Chyba při načítání hybridní podkladové mapy:", error);
                     });
 
-                    basemapToggle.nextBasemap.load().catch(function(error) {
-                        console.error("Chyba při načítání hybridní podkladové mapy:", error);
+                    basemapToggle.watch("activeBasemap", function(newValue, oldValue) {
+                        console.log("Přepínání podkladové mapy z:", oldValue, "na:", newValue);
+                        if (newValue.title === "Hybridní podkladová mapa") {
+                            console.log("Hybridní podkladová mapa je aktivní.");
+                        }
+                    });
+
+                    // Přidání výpisu chyb pro jednotlivé vrstvy
+                    view.when(function() {
+                        webmap.layers.forEach(function(layer) {
+                            layer.when(function() {
+                                console.log("Vrstva načtena úspěšně:", layer.title);
+                            }).catch(function(error) {
+                                console.error("Chyba při načítání vrstvy:", layer.title, error);
+                            });
+                        });
                     });
                 });
             });
