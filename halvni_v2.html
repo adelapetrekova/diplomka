@@ -60,7 +60,7 @@
                     var view = new MapView({
                         container: "viewDiv",
                         map: webmap,
-                        center: [14.96, 49.37], // Souřadnice středu mapy
+                        center: [14.96, 49.375], // Souřadnice středu mapy
                         zoom: 11
                     });
 
@@ -108,20 +108,11 @@
                         view: view,
                         nextBasemap: new Basemap({
                             portalItem: {
-                                id: "52bdc7ab7fb044d98add148764eaa30a" // Zde vložte ID hybridní podkladové mapy
+                                id: "4c2b44abaa4841d08c938f4bbb548561" // Zde vložte ID hybridní podkladové mapy
                             }
                         })
                     });
                     view.ui.add(basemapToggle, "bottom-right");
-
-                    // Přidání výpisu chyb do konzole
-                    basemapToggle.watch("activeBasemap", function(newValue, oldValue) {
-                        console.log("Přepínání podkladové mapy z:", oldValue, "na:", newValue);
-                    });
-
-                    basemapToggle.nextBasemap.load().catch(function(error) {
-                        console.error("Chyba při načítání hybridní podkladové mapy:", error);
-                    });
                 });
             });
         });
