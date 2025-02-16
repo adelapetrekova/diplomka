@@ -22,7 +22,7 @@
     <header>
         <h1>Portál zranitelnosti krajiny ČR</h1>
         <a href="#" class="button">Nápověda</a>
-        <a href="#" class="button">Georeport</a>
+        <a href="formulář.html" class="button">Georeport</a>
     </header>
     <main>
         <div id="viewDiv"></div>
@@ -42,8 +42,10 @@
             "esri/layers/GraphicsLayer",
             "esri/widgets/LayerList",
             "esri/widgets/BasemapToggle",
-            "esri/Basemap"
-        ], function(esriConfig, Portal, PortalItem, MapView, WebMap, Sketch, GraphicsLayer, LayerList, BasemapToggle, Basemap) {
+            "esri/Basemap",
+            "esri/tasks/QueryTask",
+            "esri/tasks/support/Query"
+        ], function(esriConfig, Portal, PortalItem, MapView, WebMap, Sketch, GraphicsLayer, LayerList, BasemapToggle, Basemap, QueryTask, Query) {
             esriConfig.portalUrl = "https://www.arcgis.com"; // Ujistěte se, že je správně nakonfigurován portál
 
             var portal = new Portal();
@@ -60,8 +62,11 @@
                     var view = new MapView({
                         container: "viewDiv",
                         map: webmap,
-                        center: [14.96, 49.375], // Souřadnice středu mapy
-                        zoom: 11
+                        center: [14.96, 49.37], // Souřadnice středu mapy
+                        zoom: 11,
+                        spatialReference: {
+                            wkid: 3857 // Nastavte prostorovou referenci na EPSG:3857
+                        }
                     });
 
                     var graphicsLayer = new GraphicsLayer();
@@ -82,9 +87,26 @@
                     sketch.on("create", function(event) {
                         if (event.state === "complete") {
                             var polygon = event.graphic.geometry;
-                            // Zde můžete přidat kód pro výběr hodnot na základě polygonu
                             console.log("Polygon vytvořen:", polygon);
                             graphicsLayer.add(event.graphic); // Přidejte polygon do vrstvy
+
+                            // Vytvoření dotazu na základě polygonu
+                            var queryTask = new QueryTask({
+                                url: "URL_VAŠÍ_FEATURE_LAYER" // Zde vložte URL vaší feature layer
+                            });
+
+                            var query = new Query();
+                            query.geometry = polygon;
+                            query.spatialRelationship = "intersects";
+                            query.returnGeometry = true;
+                            query.outFields = ["*"];
+
+                            queryTask.execute(query).then(function(result) {
+                                console.log("Výsledky dotazu:", result.features);
+                                // Zde můžete přidat kód pro zpracování výsledků dotazu
+                            }).catch(function(error) {
+                                console.error("Chyba při provádění dotazu:", error);
+                            });
                         }
                     });
 
@@ -93,11 +115,12 @@
                         view: view,
                         listItemCreatedFunction: function(event) {
                             var item = event.item;
-                            if (item.layer.type === "group") {
+                            if (item.layer.type === "group" || item.layer.type === "GroupLayer") {
                                 item.panel = {
                                     content: "legend",
                                     open: true
                                 };
+                                item.title = item.layer.title || "Skupinová vrstva";
                             }
                         }
                     });
@@ -108,11 +131,36 @@
                         view: view,
                         nextBasemap: new Basemap({
                             portalItem: {
-                                id: "4c2b44abaa4841d08c938f4bbb548561" // Zde vložte ID hybridní podkladové mapy
+                                id: "86265e5a4bbb4187a59719cf134e0018" // Zde vložte ID hybridní podkladové mapy
                             }
                         })
                     });
                     view.ui.add(basemapToggle, "bottom-right");
+
+                    // Přidání výpisu chyb do konzole
+                    basemapToggle.nextBasemap.load().then(function() {
+                        console.log("Hybridní podkladová mapa načtena úspěšně.");
+                    }).catch(function(error) {
+                        console.error("Chyba při načítání hybridní podkladové mapy:", error);
+                    });
+
+                    basemapToggle.watch("activeBasemap", function(newValue, oldValue) {
+                        console.log("Přepínání podkladové mapy z:", oldValue, "na:", newValue);
+                        if (newValue.title === "Hybridní podkladová mapa") {
+                            console.log("Hybridní podkladová mapa je aktivní.");
+                        }
+                    });
+
+                    // Přidání výpisu chyb pro jednotlivé vrstvy
+                    view.when(function() {
+                        webmap.layers.forEach(function(layer) {
+                            layer.when(function() {
+                                console.log("Vrstva načtena úspěšně:", layer.title);
+                            }).catch(function(error) {
+                                console.error("Chyba při načítání vrstvy:", layer.title, error);
+                            });
+                        });
+                    });
                 });
             });
         });
