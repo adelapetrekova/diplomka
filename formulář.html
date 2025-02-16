@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <title>Georeport Formulář</title>
+    <script src="https://js.arcgis.com/4.15/"></script>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.15/esri/themes/light/main.css">
+    <style>
+        body {
+            display: flex;
+        }
+        #formColumn {
+            width: 20%;
+            padding: 20px;
+        }
+        #mapColumn {
+            width: 80%;
+            padding: 20px;
+        }
+        #map {
+            width: 100%;
+            height: 600px; /* Nastavte výšku mapového pole podle potřeby */
+            background-color: #eaeaea; /* Dočasná barva pozadí pro mapové pole */
+        }
+    </style>
+</head>
+<body>
+    <div id="formColumn">
+        <h1>Georeport</h1>
+        <form id="georeportForm" action="process_form.php" method="post">
+            <!-- Výběr území -->
+            <h2>Výběr území</h2>
+            <label>
+                <input type="radio" name="uzemi" value="cele" checked>
+                Celé území
+            </label>
+            <br>
+            <label>
+                <input type="radio" name="uzemi" value="uzivatelske">
+                Uživatelské území
+            </label>
+            <div id="spatialSelection" style="display: none;">
+                <!-- Nástroj pro výběr území -->
+                <p>Vyberte území pomocí kvadrátů (q):</p>
+                <!-- Zde by měl být nástroj pro výběr území -->
+            </div>
+
+            <!-- Výběr tématu -->
+            <h2>Výběr tématu</h2>
+            <label>
+                <input type="checkbox" name="tema[]" value="nachylnost" checked>
+                Náchylnost k degradaci mapa
+            </label>
+            <br>
+            <label>
+                <input type="checkbox" name="tema[]" value="funkcnost" checked>
+                Funkčnost krajiny
+            </label>
+            <br>
+            <label>
+                <input type="checkbox" name="tema[]" value="odolnost" checked>
+                Odolnost krajiny
+            </label>
+            <br>
+            <label>
+                <input type="checkbox" name="tema[]" value="synteza" checked>
+                Syntéza/lokalizace prioritních opatření
+            </label>
+            <br>
+            <label>
+                <input type="checkbox" name="tema[]" value="typizace" checked>
+                Typizace prioritních opatření
+            </label>
+
+            <!-- Odeslání formuláře -->
+            <br><br>
+            <button type="submit">Odeslat</button>
+        </form>
+    </div>
+    <div id="mapColumn">
+        <div id="map"></div>
+    </div>
+
+    <script>
+        require([
+            "esri/config",
+            "esri/portal/Portal",
+            "esri/portal/PortalItem",
+            "esri/views/MapView",
+            "esri/WebMap",
+            "esri/widgets/Sketch",
+            "esri/layers/GraphicsLayer",
+            "esri/widgets/LayerList",
+            "esri/widgets/BasemapToggle",
+            "esri/Basemap",
+            "esri/layers/GroupLayer"
+        ], function(esriConfig, Portal, PortalItem, MapView, WebMap, Sketch, GraphicsLayer, LayerList, BasemapToggle, Basemap, GroupLayer) {
+            esriConfig.portalUrl = "https://www.arcgis.com"; // Ujistěte se, že je správně nakonfigurován portál
+
+            var portal = new Portal();
+            portal.load().then(function() {
+                var portalItem = new PortalItem({
+                    id: "01f4cb6275ae44b0847a8d6814bab63b" // Zde vložte ID vaší Web Mapping Application
+                });
+
+                portalItem.load().then(function() {
+                    var webmap = new WebMap({
+                        portalItem: portalItem
+                    });
+
+                    var view = new MapView({
+                        container: "map",
+                        map: webmap,
+                        center: [14.96, 49.37], // Souřadnice středu mapy
+                        zoom: 11,
+                        spatialReference: {
+                            wkid: 3857 // Nastavte prostorovou referenci na EPSG:3857
+                        }
+                    });
+
+                    var graphicsLayer = new GraphicsLayer();
+                    webmap.add(graphicsLayer);
+
+                   
+                    // Přidání přepínače podkladových map
+                    var basemapToggle = new BasemapToggle({
+                        view: view,
+                        nextBasemap: new Basemap({
+                            portalItem: {
+                                id: "86265e5a4bbb4187a59719cf134e0018" // Zde vložte ID hybridní podkladové mapy
+                            }
+                        })
+                    });
+                    view.ui.add(basemapToggle, "bottom-right");
+                });
+            });
+        });
+
+        document.querySelector('input[name="uzemi"][value="uzivatelske"]').addEventListener('change', function() {
+            document.getElementById('spatialSelection').style.display = 'block';
+        });
+        document.querySelector('input[name="uzemi"][value="cele"]').addEventListener('change', function() {
+            document.getElementById('spatialSelection').style.display = 'none';
+        });
+    </script>
+</body>
+</html>
