@@ -1,16 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Portál zranitelnosti krajiny ČR</title>
+    <title>Portál zranitelnosti krajiny</title>
     <meta charset='UTF-8'>
     <meta name='description' content='HTML stránka georeportu zranitelnosti krajiny'>
     <meta name='keywords' content='zranitelnost krajiny, georeport, ekologie'>
     <meta name='author' content='Adéla Petřeková'>
-    <link rel="stylesheet" href="https://js.arcgis.com/4.15/esri/themes/light/main.css">
-    <script src="https://js.arcgis.com/4.15/"></script>
     <style>
         #viewDiv {
-            height: 600px;
+            height: 0px;
             width: 100%;
         }
         .button {
@@ -20,132 +18,16 @@
 </head>
 <body>
     <header>
-        <h1>Portál zranitelnosti krajiny ČR</h1>
-        <a href="#" class="button">Nápověda</a>
+        <h1>Portál zranitelnosti krajiny</h1>
         <a href="formulář.html" class="button">Georeport</a>
     </header>
     <main>
-        <div id="viewDiv"></div>
-        <button id="drawPolygonButton" class="button">Vytvořit polygon</button>
+        <div id="viewDiv">
+            <iframe src="https://kgi-upol.maps.arcgis.com/apps/instant/interactivelegend/index.html?appid=ca2aa0c9089b4537a7aed2622e25d774" width="1600" height="750" frameborder="0" style="border:0" allowfullscreen>iFrames nejsou na této stránce podporovány.</iframe>
+        </div>
     </main>
     <footer>
         <p>&copy; Portál zranitelnosti krajiny, Univerzita Palackého v Olomouci</p>
     </footer>
-    <script>
-        require([
-            "esri/config",
-            "esri/portal/Portal",
-            "esri/portal/PortalItem",
-            "esri/views/MapView",
-            "esri/WebMap",
-            "esri/widgets/Sketch",
-            "esri/layers/GraphicsLayer",
-            "esri/widgets/LayerList",
-            "esri/widgets/BasemapToggle",
-            "esri/Basemap",
-            "esri/layers/GroupLayer"
-        ], function(esriConfig, Portal, PortalItem, MapView, WebMap, Sketch, GraphicsLayer, LayerList, BasemapToggle, Basemap, GroupLayer) {
-            esriConfig.portalUrl = "https://www.arcgis.com"; // Ujistěte se, že je správně nakonfigurován portál
-
-            var portal = new Portal();
-            portal.load().then(function() {
-                var portalItem = new PortalItem({
-                    id: "01f4cb6275ae44b0847a8d6814bab63b" // Zde vložte ID vaší Web Mapping Application
-                });
-
-                portalItem.load().then(function() {
-                    var webmap = new WebMap({
-                        portalItem: portalItem
-                    });
-
-                    var view = new MapView({
-                        container: "viewDiv",
-                        map: webmap,
-                        center: [14.96, 49.37], // Souřadnice středu mapy
-                        zoom: 11,
-                        spatialReference: {
-                            wkid: 3857 // Nastavte prostorovou referenci na EPSG:3857
-                        }
-                    });
-
-                    var graphicsLayer = new GraphicsLayer();
-                    webmap.add(graphicsLayer);
-
-                    var sketch = new Sketch({
-                        view: view,
-                        layer: graphicsLayer,
-                        availableCreateTools: ["polygon"]
-                    });
-
-                    view.ui.add(sketch, "top-right");
-
-                    document.getElementById("drawPolygonButton").addEventListener("click", function() {
-                        sketch.create("polygon");
-                    });
-
-                    sketch.on("create", function(event) {
-                        if (event.state === "complete") {
-                            var polygon = event.graphic.geometry;
-                            // Zde můžete přidat kód pro výběr hodnot na základě polygonu
-                            console.log("Polygon vytvořen:", polygon);
-                            graphicsLayer.add(event.graphic); // Přidejte polygon do vrstvy
-                        }
-                    });
-
-                    // Přidání přepínače vrstev s podporou skupin vrstev
-                    var layerList = new LayerList({
-                        view: view,
-                        listItemCreatedFunction: function(event) {
-                            var item = event.item;
-                            if (item.layer.type === "group" || item.layer.type === "GroupLayer") {
-                                item.panel = {
-                                    content: "legend",
-                                    open: true
-                                };
-                                item.title = item.layer.title || "Skupinová vrstva";
-                            }
-                        }
-                    });
-                    view.ui.add(layerList, "top-left");
-
-                    // Přidání přepínače podkladových map
-                    var basemapToggle = new BasemapToggle({
-                        view: view,
-                        nextBasemap: new Basemap({
-                            portalItem: {
-                                id: "86265e5a4bbb4187a59719cf134e0018" // Zde vložte ID hybridní podkladové mapy
-                            }
-                        })
-                    });
-                    view.ui.add(basemapToggle, "bottom-right");
-
-                    // Přidání výpisu chyb do konzole
-                    basemapToggle.nextBasemap.load().then(function() {
-                        console.log("Hybridní podkladová mapa načtena úspěšně.");
-                    }).catch(function(error) {
-                        console.error("Chyba při načítání hybridní podkladové mapy:", error);
-                    });
-
-                    basemapToggle.watch("activeBasemap", function(newValue, oldValue) {
-                        console.log("Přepínání podkladové mapy z:", oldValue, "na:", newValue);
-                        if (newValue.title === "Hybridní podkladová mapa") {
-                            console.log("Hybridní podkladová mapa je aktivní.");
-                        }
-                    });
-
-                    // Přidání výpisu chyb pro jednotlivé vrstvy
-                    view.when(function() {
-                        webmap.layers.forEach(function(layer) {
-                            layer.when(function() {
-                                console.log("Vrstva načtena úspěšně:", layer.title);
-                            }).catch(function(error) {
-                                console.error("Chyba při načítání vrstvy:", layer.title, error);
-                            });
-                        });
-                    });
-                });
-            });
-        });
-    </script>
 </body>
 </html>
