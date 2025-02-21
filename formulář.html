@@ -7,11 +7,41 @@
     <link rel="stylesheet" href="https://js.arcgis.com/4.15/esri/themes/light/main.css">
     <style>
         body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
             display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+        }
+        header h1 {
+            margin: 0;
+        }
+        .button {
+            background-color: #f44336;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+        }
+        main {
+            display: flex;
+            flex: 1;
         }
         #formColumn {
             width: 20%;
             padding: 20px;
+            background-color: #f1f1f1;
         }
         #mapColumn {
             width: 80%;
@@ -19,34 +49,42 @@
         }
         #map {
             width: 100%;
-            height: 600px; /* Nastavte výšku mapového pole podle potřeby */
-            background-color: #eaeaea; /* Dočasná barva pozadí pro mapové pole */
+            height: 100%;
+            background-color: #eaeaea;
+        }
+        footer {
+            text-align: center;
+            padding: 10px;
+            background-color: #f1f1f1;
         }
     </style>
 </head>
 <body>
-    <div id="formColumn">
-        <h1>Georeport</h1>
-        <form id="georeportForm" action="process_form.php" method="post">
-            <!-- Výběr území -->
-            <h2>Výběr území</h2>
-            <label>
-                <input type="radio" name="uzemi" value="cele" checked>
-                Celé území
-            </label>
-            <br>
-            <label>
-                <input type="radio" name="uzemi" value="uzivatelske">
-                Uživatelské území
-            </label>
-            <div id="spatialSelection" style="display: none;">
-                <!-- Nástroj pro výběr území -->
-                <p>Vyberte území pomocí kvadrátů (q):</p>
-                <!-- Zde by měl být nástroj pro výběr území -->
-            </div>
+    <header>
+        <h1>Georeport Formulář</h1>
+    </header>
+    <main>
+        <div id="formColumn">
+            <form id="georeportForm" action="process_form.php" method="post">
+                <!-- Výběr území -->
+                <h2>Výběr území</h2>
+                <label>
+                    <input type="radio" name="uzemi" value="cele" checked>
+                    Celé území
+                </label>
+                <br>
+                <label>
+                    <input type="radio" name="uzemi" value="uzivatelske">
+                    Uživatelské území
+                </label>
+                <div id="spatialSelection" style="display: none;">
+                    <!-- Nástroj pro výběr území -->
+                    <p>Vyberte území pomocí kvadrátů (q):</p>
+                    <!-- Zde by měl být nástroj pro výběr území -->
+                </div>
 
-            <!-- Výběr tématu -->
-            <h2>Výběr tématu</h2>
+                <!-- Výběr tématu -->
+                <h2>Výběr tématu</h2>
                 <label>
                     <input type="checkbox" name="tema[]" value="nachylnost" checked>
                     Náchylnost k degradaci mapa
@@ -72,14 +110,18 @@
                     Typizace prioritních opatření
                 </label>
 
-            <!-- Odeslání formuláře -->
-            <br><br>
-            <button type="submit">Odeslat</button>
-        </form>
-    </div>
-    <div id="mapColumn">
-        <div id="map"></div>
-    </div>
+                <!-- Odeslání formuláře -->
+                <br><br>
+                <button type="submit" class="button">Odeslat</button>
+            </form>
+        </div>
+        <div id="mapColumn">
+            <div id="map"></div>
+        </div>
+    </main>
+    <footer>
+        <p>&copy; Georeport Formulář, Univerzita Palackého v Olomouci</p>
+    </footer>
 
     <script>
         require([
@@ -121,7 +163,6 @@
                     var graphicsLayer = new GraphicsLayer();
                     webmap.add(graphicsLayer);
 
-                   
                     // Přidání přepínače podkladových map
                     var basemapToggle = new BasemapToggle({
                         view: view,

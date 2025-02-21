@@ -7,12 +7,37 @@
     <meta name='keywords' content='zranitelnost krajiny, georeport, ekologie'>
     <meta name='author' content='Adéla Petřeková'>
     <style>
-        #viewDiv {
-            height: 0px;
-            width: 100%;
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+        }
+        header h1 {
+            margin: 0;
         }
         .button {
-            margin: 10px;
+            background-color: #f44336;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        #viewDiv {
+            height: 750px;
+            width: 100%;
+        }
+        footer {
+            text-align: center;
+            padding: 10px;
+            background-color: #f1f1f1;
         }
     </style>
 </head>
@@ -23,7 +48,7 @@
     </header>
     <main>
         <div id="viewDiv">
-            <iframe src="https://kgi-upol.maps.arcgis.com/apps/instant/interactivelegend/index.html?appid=ca2aa0c9089b4537a7aed2622e25d774" width="1600" height="750" frameborder="0" style="border:0" allowfullscreen>iFrames nejsou na této stránce podporovány.</iframe>
+            <iframe src="https://kgi-upol.maps.arcgis.com/apps/instant/interactivelegend/index.html?appid=ca2aa0c9089b4537a7aed2622e25d774" width="100%" height="750" frameborder="0" style="border:0" allowfullscreen>iFrames nejsou na této stránce podporovány.</iframe>
         </div>
     </main>
     <footer>
