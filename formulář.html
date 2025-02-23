@@ -62,6 +62,7 @@
 <body>
     <header>
         <h1>Georeport Formulář</h1>
+        <a href="hlavni.html" class="button">Zpět na hlavní stranu</a>
     </header>
     <main>
         <div id="formColumn">
@@ -86,29 +87,118 @@
                 <!-- Výběr tématu -->
                 <h2>Výběr tématu</h2>
                 <label>
-                    <input type="checkbox" name="tema[]" value="nachylnost" checked>
+                    <input type="checkbox" name="tema[]" value="nachylnost" checked onchange="toggleSubOptions(this, 'nachylnost')">
                     Náchylnost k degradaci mapa
                 </label>
+                <div id="nachylnost" style="margin-left: 20px;">
+                    <label>
+                        <input type="checkbox" name="nachylnost_hodnoty" checked>
+                        Hodnoty
+                    </label>
+                    <br>
+                    <label>
+                        <input type="checkbox" name="nachylnost_grafy" checked>
+                        Grafy
+                    </label>
+                    <br>
+                    <label>
+                        <input type="checkbox" name="nachylnost_mapy" checked>
+                        Mapy
+                    </label>
+                </div>
                 <br>
                 <label>
-                    <input type="checkbox" name="tema[]" value="funkcnost" checked>
+                    <input type="checkbox" name="tema[]" value="funkcnost" checked onchange="toggleSubOptions(this, 'funkcnost')">
                     Funkčnost krajiny
                 </label>
+                <div id="funkcnost" style="margin-left: 20px;">
+                    <label>
+                        <input type="checkbox" name="funkcnost_hodnoty" checked>
+                        Hodnoty
+                    </label>
+                    <br>
+                    <label>
+                        <input type="checkbox" name="funkcnost_grafy" checked>
+                        Grafy
+                    </label>
+                    <br>
+                    <label>
+                        <input type="checkbox" name="funkcnost_mapy" checked>
+                        Mapy
+                    </label>
+                </div>
                 <br>
                 <label>
-                    <input type="checkbox" name="tema[]" value="odolnost" checked>
+                    <input type="checkbox" name="tema[]" value="odolnost" checked onchange="toggleSubOptions(this, 'odolnost')">
                     Odolnost krajiny
                 </label>
+                <div id="odolnost" style="margin-left: 20px;">
+                    <label>
+                        <input type="checkbox" name="odolnost_hodnoty" checked>
+                        Hodnoty
+                    </label>
+                    <br>
+                    <label>
+                        <input type="checkbox" name="odolnost_grafy" checked>
+                        Grafy
+                    </label>
+                    <br>
+                    <label>
+                        <input type="checkbox" name="odolnost_mapy" checked>
+                        Mapy
+                    </label>
+                </div>
                 <br>
                 <label>
-                    <input type="checkbox" name="tema[]" value="synteza" checked>
+                    <input type="checkbox" name="tema[]" value="synteza" checked onchange="toggleSubOptions(this, 'synteza')">
                     Syntéza/lokalizace prioritních opatření
                 </label>
+                <div id="synteza" style="margin-left: 20px;">
+                    <label>
+                        <input type="checkbox" name="synteza_hodnoty" checked>
+                        Hodnoty
+                    </label>
+                    <br>
+                    <label>
+                        <input type="checkbox" name="synteza_grafy" checked>
+                        Grafy
+                    </label>
+                    <br>
+                    <label>
+                        <input type="checkbox" name="synteza_mapy" checked>
+                        Mapy
+                    </label>
+                </div>
                 <br>
                 <label>
-                    <input type="checkbox" name="tema[]" value="typizace" checked>
+                    <input type="checkbox" name="tema[]" value="typizace" checked onchange="toggleSubOptions(this, 'typizace')">
                     Typizace prioritních opatření
                 </label>
+                <div id="typizace" style="margin-left: 20px;">
+                    <label>
+                        <input type="checkbox" name="typizace_hodnoty" checked>
+                        Hodnoty
+                    </label>
+                    <br>
+                    <label>
+                        <input type="checkbox" name="typizace_grafy" checked>
+                        Grafy
+                    </label>
+                    <br>
+                    <label>
+                        <input type="checkbox" name="typizace_mapy" checked>
+                        Mapy
+                    </label>
+                </div>
+
+                <script>
+                function toggleSubOptions(mainCheckbox, subOptionsId) {
+                    var subOptions = document.getElementById(subOptionsId).querySelectorAll('input[type="checkbox"]');
+                    subOptions.forEach(function(checkbox) {
+                        checkbox.checked = mainCheckbox.checked;
+                    });
+                }
+                </script>
 
                 <!-- Odeslání formuláře -->
                 <br><br>
