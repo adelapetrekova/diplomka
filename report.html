@@ -14,18 +14,7 @@
                 @bottom-center {{
                     content: "Strana " counter(page);
                     font-family: Arial, sans-serif;
-                }}
-                @bottom-left {{
-                    content: url('katedra_logo.png');
-                    vertical-align: bottom;
-                }}
-                @bottom-right {{
-                    content: url('logo_czechglobe.png');
-                    vertical-align: bottom;
-                }}
-                @bottom {{
-                    border-top: 1px solid #000;
-                    padding-top: 5mm;
+                    text-align: center; /* Uložení číslování strany na střed */
                 }}
             }}
             body {{
@@ -33,8 +22,9 @@
                 margin: 0;
                 padding: 0;
             }}
+            .main
             h1 {{
-                background-color: #333;
+                background-color: #4CAF50;
                 color: #fff;
                 padding: 10px;
             }}
@@ -42,14 +32,10 @@
                 padding: 10px;
             }}
             .footer {{
+                position: fixed;
+                bottom: 0;
                 width: 100%;
                 text-align: center;
-                font-size: 12px;
-                padding-bottom: 10mm;
-                display: flex; /* Aby se prvky v zápatí chovaly jako bloky */
-                justify-content: space-between;
-                align-items: center;
-                flex-direction: row;
             }}
             .footer hr {{
                 width: 100%;
@@ -61,7 +47,7 @@
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                padding: 5px 0;
+                padding: 0 0;
             }}
             .footer img {{
                 height: 50px;
@@ -329,14 +315,15 @@
             <!-- vložení mapy kde prioritně umístit opatření -->    
 
         </main>
-        <div class="footer">
-            <hr>
-            <div class="footer-content">
-                <img src="katedra_logo.png" alt="logo KGI">
-                <span class="page_number"></span>
-                <img src="logo_czechglobe.png" alt="logo Czechglobe">
-            </div>
-        </div>
+        <footer>
+            <div class="footer">
+                <hr>
+                <div class="footer-content">
+                    <img src="katedra_logo.png" alt="Logo KGI">
+                    <img src="logo_czechglobe.png" alt="Logo CzechGlobe">
+                </div>
+             </div>
+        </footer>    
     </body>
     </html>
     
