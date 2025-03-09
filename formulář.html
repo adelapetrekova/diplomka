@@ -88,7 +88,7 @@
                 <h2>Výběr tématu</h2>
                 <label>
                     <input type="checkbox" name="tema[]" value="nachylnost" checked onchange="toggleSubOptions(this, 'nachylnost')">
-                    Náchylnost k degradaci mapa
+                    Náchylnost území k degradaci
                 </label>
                 <div id="nachylnost" style="margin-left: 20px;">
                     <label>
@@ -220,58 +220,69 @@
             "esri/portal/PortalItem",
             "esri/views/MapView",
             "esri/WebMap",
-            "esri/widgets/Sketch",
             "esri/layers/GraphicsLayer",
-            "esri/widgets/LayerList",
             "esri/widgets/BasemapToggle",
-            "esri/Basemap",
-            "esri/layers/GroupLayer"
-        ], function(esriConfig, Portal, PortalItem, MapView, WebMap, Sketch, GraphicsLayer, LayerList, BasemapToggle, Basemap, GroupLayer) {
-            esriConfig.portalUrl = "https://www.arcgis.com"; // Ujistěte se, že je správně nakonfigurován portál
-
+            "esri/Basemap"
+        ], function(esriConfig, Portal, PortalItem, MapView, WebMap, GraphicsLayer, BasemapToggle, Basemap) {
+            esriConfig.portalUrl = "https://www.arcgis.com";
+    
             var portal = new Portal();
             portal.load().then(function() {
                 var portalItem = new PortalItem({
-                    id: "01f4cb6275ae44b0847a8d6814bab63b" // Zde vložte ID vaší Web Mapping Application
+                    id: "01f4cb6275ae44b0847a8d6814bab63b"
                 });
-
+    
                 portalItem.load().then(function() {
                     var webmap = new WebMap({
                         portalItem: portalItem
                     });
-
+    
                     var view = new MapView({
                         container: "map",
                         map: webmap,
-                        center: [14.96, 49.37], // Souřadnice středu mapy
-                        zoom: 11,
+                        center: [14.98, 49.362],
+                        zoom: 12,
                         spatialReference: {
-                            wkid: 3857 // Nastavte prostorovou referenci na EPSG:3857
+                            wkid: 3857
                         }
                     });
+    
+                    view.when(() => {
+                        // Skryje všechny vrstvy
+                        webmap.layers.forEach(layer => {
+                            layer.visible = false;
+                        });
 
+                        // Zobrazí vrstvu "opatreni"
+                        let opatreniLayer = webmap.layers.find(layer => layer.title === "Opatření");
+                        if (opatreniLayer) {
+                            opatreniLayer.visible = true;
+                        } else {
+                        console.log("Vrstva 'opatreni' s ID '1957cb0039f-layer-1' nebyla nalezena.");
+                        }
+                    });
+                        
                     var graphicsLayer = new GraphicsLayer();
                     webmap.add(graphicsLayer);
-
-                    // Přidání přepínače podkladových map
+    
                     var basemapToggle = new BasemapToggle({
                         view: view,
                         nextBasemap: new Basemap({
                             portalItem: {
-                                id: "86265e5a4bbb4187a59719cf134e0018" // Zde vložte ID hybridní podkladové mapy
+                                id: "86265e5a4bbb4187a59719cf134e0018"
                             }
                         })
                     });
                     view.ui.add(basemapToggle, "bottom-right");
                 });
             });
-        });
-
-        document.querySelector('input[name="uzemi"][value="uzivatelske"]').addEventListener('change', function() {
-            document.getElementById('spatialSelection').style.display = 'block';
-        });
-        document.querySelector('input[name="uzemi"][value="cele"]').addEventListener('change', function() {
-            document.getElementById('spatialSelection').style.display = 'none';
+    
+            document.querySelector('input[name="uzemi"][value="uzivatelske"]').addEventListener('change', function() {
+                document.getElementById('spatialSelection').style.display = 'block';
+            });
+            document.querySelector('input[name="uzemi"][value="cele"]').addEventListener('change', function() {
+                document.getElementById('spatialSelection').style.display = 'none';
+            });
         });
     </script>
 </body>
