@@ -80,7 +80,7 @@
                 </label>
                 <div id="spatialSelection" style="display: none;">
                     <!-- Nástroj pro výběr území -->
-                    <p>Vyberte území pomocí kvadrátů (q):</p>
+                    <p>Vyberte území pomocí kliknutí na jednotlivé čtverce</p>
                     <!-- Zde by měl být nástroj pro výběr území -->
                 </div>
 
@@ -215,56 +215,138 @@
 
     <script>
         require([
-            "esri/config",
-            "esri/portal/Portal",
-            "esri/portal/PortalItem",
-            "esri/views/MapView",
-            "esri/WebMap",
-            "esri/layers/GraphicsLayer",
-            "esri/widgets/BasemapToggle",
-            "esri/Basemap"
-        ], function(esriConfig, Portal, PortalItem, MapView, WebMap, GraphicsLayer, BasemapToggle, Basemap) {
-            esriConfig.portalUrl = "https://www.arcgis.com";
-    
-            var portal = new Portal();
-            portal.load().then(function() {
-                var portalItem = new PortalItem({
-                    id: "01f4cb6275ae44b0847a8d6814bab63b"
-                });
-    
-                portalItem.load().then(function() {
-                    var webmap = new WebMap({
-                        portalItem: portalItem
-                    });
-    
-                    var view = new MapView({
-                        container: "map",
-                        map: webmap,
-                        center: [14.98, 49.362],
-                        zoom: 12,
-                        spatialReference: {
-                            wkid: 3857
-                        }
-                    });
-    
-                    view.when(() => {
-                        // Skryje všechny vrstvy
-                        webmap.layers.forEach(layer => {
-                            layer.visible = false;
-                        });
+        "esri/config",
+        "esri/portal/Portal",
+        "esri/portal/PortalItem",
+        "esri/views/MapView",
+        "esri/WebMap",
+        "esri/layers/GraphicsLayer",
+        "esri/widgets/BasemapToggle",
+        "esri/Basemap",
+        "esri/layers/FeatureLayer",
+        "esri/tasks/QueryTask",
+        "esri/tasks/support/Query",
+        "esri/Graphic",
+        "esri/geometry/Polygon"
+    ], function(esriConfig, Portal, PortalItem, MapView, WebMap, GraphicsLayer, BasemapToggle, Basemap, FeatureLayer, QueryTask, Query, Graphic, Polygon) {
+        esriConfig.portalUrl = "https://www.arcgis.com";
 
-                        // Zobrazí vrstvu "opatreni"
-                        let opatreniLayer = webmap.layers.find(layer => layer.title === "Opatření");
-                        if (opatreniLayer) {
-                            opatreniLayer.visible = true;
-                        } else {
+        var portal = new Portal();
+        portal.load().then(function() {
+            var portalItem = new PortalItem({
+                id: "01f4cb6275ae44b0847a8d6814bab63b"
+            });
+
+            portalItem.load().then(function() {
+                var webmap = new WebMap({
+                    portalItem: portalItem
+                });
+
+                var view = new MapView({
+                    container: "map",
+                    map: webmap,
+                    center: [14.98, 49.362],
+                    zoom: 12,
+                    spatialReference: {
+                        wkid: 3857
+                    }
+                });
+
+                // Funkce pro odstranění zvýraznění (přesunuto mimo view.when())
+                function odstranZvyrazneni(highlightLayer, vybraneCtverce, vybraneGrafiky) {
+                    highlightLayer.removeAll();
+                    vybraneCtverce.length = 0; // Vyprázdnění pole
+                    vybraneGrafiky.length = 0; // Vyprázdnění pole
+                }
+
+                view.when(() => {
+                    // Skryje všechny vrstvy
+                    webmap.layers.forEach(layer => {
+                        layer.visible = false;
+                    });
+
+                    // Zobrazí vrstvu "opatreni"
+                    let opatreniLayer = webmap.layers.find(layer => layer.title === "Opatření");
+                    if (opatreniLayer) {
+                        opatreniLayer.visible = true;
+                        // Odstranění popup template z vrstvy "Opatření"
+                        opatreniLayer.popupTemplate = null;
+                        console.log("Popup template odstraněn z vrstvy 'Opatření'.");
+                    } else {
                         console.log("Vrstva 'opatreni' nebyla nalezena.");
+                    }
+
+                    const ctverceLayer = new FeatureLayer({
+                        url: "https://services1.arcgis.com/AGrMjSBR7fxJYLfU/arcgis/rest/services/černovice_250_opatření_label/FeatureServer/1"
+                    });
+
+                    // Odstranění popup template
+                    ctverceLayer.popupTemplate = null;
+                    console.log("Popup template odstraněn.");
+
+                    webmap.add(ctverceLayer);
+
+                    let vybraneCtverce = []; // Pole pro uložení vybraných čtverců
+                    let vybraneGrafiky = []; // Pole pro uložení zvýrazněných grafik
+
+                    const highlightLayer = new GraphicsLayer(); // Nová vrstva pro zvýraznění
+                    webmap.add(highlightLayer);
+
+                    view.on("click", function(event) {
+                        // Kontrola, zda je zaškrtnuté políčko "Uživatelské území"
+                        if (document.querySelector('input[name="uzemi"][value="uzivatelske"]').checked) {
+                            view.hitTest(event).then(function(response) {
+                                if (response.results.length) {
+                                    const graphic = response.results.filter(function(result) {
+                                        return result.graphic.layer === ctverceLayer;
+                                    })[0].graphic;
+
+                                    if (graphic) {
+                                        const objectId = graphic.attributes.OBJECTID;
+                                        console.log("Kliknuto na čtverec s OBJECTID:", objectId);
+
+                                        if (vybraneCtverce.includes(objectId)) {
+                                            // Odebrání čtverce z výběru
+                                            vybraneCtverce = vybraneCtverce.filter(id => id !== objectId);
+                                            // Odstranění zvýraznění
+                                            const index = vybraneGrafiky.findIndex(g => g.attributes.OBJECTID === objectId);
+                                            if (index !== -1) {
+                                                highlightLayer.remove(vybraneGrafiky[index]);
+                                                vybraneGrafiky.splice(index, 1);
+                                            }
+                                            console.log("Čtverec odebrán z výběru.");
+                                        } else {
+                                            // Přidání čtverce do výběru
+                                            vybraneCtverce.push(objectId);
+                                            // Zvýraznění čtverce
+                                            const highlightGraphic = new Graphic({
+                                                geometry: graphic.geometry,
+                                                symbol: {
+                                                    type: "simple-fill",
+                                                    color: [255, 0, 0, 0.5],
+                                                    outline: {
+                                                        color: [255, 0, 0],
+                                                        width: 1
+                                                    }
+                                                },
+                                                attributes: {
+                                                    OBJECTID: objectId
+                                                }
+                                            });
+                                            highlightLayer.add(highlightGraphic);
+                                            vybraneGrafiky.push(highlightGraphic);
+                                            console.log("Čtverec přidán do výběru.");
+                                        }
+                                        console.log("Vybrané čtverce:", vybraneCtverce);
+                                    }
+                                }
+                            });
                         }
                     });
-                        
+
                     var graphicsLayer = new GraphicsLayer();
                     webmap.add(graphicsLayer);
-    
+
                     var basemapToggle = new BasemapToggle({
                         view: view,
                         nextBasemap: new Basemap({
@@ -274,16 +356,28 @@
                         })
                     });
                     view.ui.add(basemapToggle, "bottom-right");
+
+                    // Posluchač událostí pro změnu na "Celé území" (přesunuto do view.when())
+                    document.querySelector('input[name="uzemi"][value="cele"]').addEventListener('change', function() {
+                        document.getElementById('spatialSelection').style.display = 'none';
+                        odstranZvyrazneni(highlightLayer, vybraneCtverce, vybraneGrafiky); // Odstranění zvýraznění při změně na "Celé území"
+                    });
                 });
             });
-    
+
             document.querySelector('input[name="uzemi"][value="uzivatelske"]').addEventListener('change', function() {
                 document.getElementById('spatialSelection').style.display = 'block';
             });
-            document.querySelector('input[name="uzemi"][value="cele"]').addEventListener('change', function() {
-                document.getElementById('spatialSelection').style.display = 'none';
+
+            // Odeslání formuláře
+            document.getElementById('georeportForm').addEventListener('submit', function(event) {
+                const uzemi = document.querySelector('input[name="uzemi"]:checked').value;
+                if (uzemi === "uzivatelske" && vybraneCtverce.length > 0) {
+                    document.getElementById('userPolygon').value = JSON.stringify(vybraneCtverce);
+                }
             });
         });
+    });
     </script>
 </body>
 </html>
