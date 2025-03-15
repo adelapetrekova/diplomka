@@ -358,7 +358,8 @@
                 document.getElementById('georeportForm').addEventListener('submit', function(event) {
                     const uzemi = document.querySelector('input[name="uzemi"]:checked').value;
                     if (uzemi === "uzivatelske" && vybraneCtverce.length > 0) {
-                        document.getElementById('userPolygon').value = JSON.stringify(vybraneCtverce);
+                        // Uložení pole vybraneCtverce jako řetězec oddělený čárkami
+                        document.getElementById('userPolygon').value = vybraneCtverce.join(',');
                     }
                 });
             });

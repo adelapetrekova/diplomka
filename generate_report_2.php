@@ -1,7 +1,10 @@
 <?php
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $uzemi = $_POST["uzemi"];
-    $user_polygon = isset($_POST["userPolygon"]) ? $_POST["userPolygon"] : "[]"; // Nastaví prázdné pole, pokud není nastaveno
+    $user_polygon_string = isset($_POST["userPolygon"]) ? $_POST["userPolygon"] : ""; // Získání řetězce
+
+    // Rozdělení řetězce na pole, pokud není prázdný
+    $user_polygon = !empty($user_polygon_string) ? explode(",", $user_polygon_string) : [];
 
     $temata = isset($_POST["tema"]) ? $_POST["tema"] : [];
     $podtemata = [];
@@ -33,11 +36,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     echo "Území: " . $uzemi . "<br>";
-    echo "Polygon: " . $user_polygon . "<br>";
+    echo "Polygon: " . implode(", ", $user_polygon) . "<br>"; // Zobrazení pole
     echo "Témata: " . implode(", ", $temata) . "<br>";
     echo "Podtémata: " . implode(", ", $podtemata) . "<br><br>";
 
-    $command = "python spousteni_georeportu.py " . escapeshellarg($uzemi) . " " . escapeshellarg($user_polygon) . " " . escapeshellarg(implode(",", $temata)) . " " . escapeshellarg(implode(",", $podtemata));
+    // Převedení pole na řetězec pro Python skript
+    $user_polygon_arg = implode(",", $user_polygon);
+
+    $command = "python spousteni_georeportu.py " . escapeshellarg($uzemi) . " " . escapeshellarg($user_polygon_arg) . " " . escapeshellarg(implode(",", $temata)) . " " . escapeshellarg(implode(",", $podtemata));
     exec($command, $output, $return_var);
 
     echo "Výstup Python skriptu:<br>";

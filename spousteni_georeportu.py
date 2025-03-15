@@ -14,37 +14,7 @@ import sys
 from weasyprint import HTML
 import webbrowser
 
-def vypocitej_gps_mbr(uzemi, user_polygon_str, cele_uzemi_geojson_path):
-    """
-    Vypočítá GPS souřadnice a MBR extent pro dané území.
-    """
-    try:
-        if uzemi == "uzivatelske":
-            user_polygon_geojson = json.loads(user_polygon_str)
-            polygon = shape(user_polygon_geojson)
-        elif uzemi == "cele":
-            with open(cele_uzemi_geojson_path, 'r') as f:
-                cele_uzemi_geojson = json.load(f)
-            polygon = shape(cele_uzemi_geojson['features'][0]['geometry']) #upravit podle struktury cele_uzemi_geojson
-
-        else:
-            return None, None
-
-        # Výpočet MBR extent
-        minx, miny, maxx, maxy = polygon.bounds
-        mbr_extent = f"MBR: ({minx:.6f}, {miny:.6f}, {maxx:.6f}, {maxy:.6f})"
-
-        # Výpočet GPS souřadnic (centroid polygonu)
-        centroid = polygon.centroid
-        gps_souradnice = (centroid.y, centroid.x)
-
-        return gps_souradnice, mbr_extent
-
-    except (json.JSONDecodeError, KeyError, TypeError, FileNotFoundError) as e:
-        print(f"Chyba při výpočtu GPS a MBR: {e}")
-        return None, None
-
-def generate_report(uzemi, user_polygon_str, temata_str, podtemata_str):
+def generate_report(uzemi, id_uzemi, temata_str, podtemata_str):
 
     # Rozsahy kategorií pro náchylnost k degradaci
     rozsahy_kategorii = {
@@ -115,26 +85,18 @@ def generate_report(uzemi, user_polygon_str, temata_str, podtemata_str):
         temata = temata_str.split(',')
         podtemata = podtemata_str.split(',')
 
-        # Zpracování uživatelského polygonu
-        if uzemi == 'uzivatelske' and user_polygon_str:
-            try:
-                user_polygon = json.loads(user_polygon_str)
-                geom = shape(user_polygon)
-                user_polygon_wkt = geom.wkt
-                where_clause = f"WHERE ST_Intersects(geom, ST_GeomFromText('{user_polygon_wkt}', 4326))"
-            except json.JSONDecodeError:
-                print("Chyba: Neplatný formát GeoJSON pro uživatelský polygon.")
-                where_clause = ""
+        if uzemi == 'uzivatelske' and id_uzemi:
+            where_clause = f"WHERE id = {id_uzemi}"
+            print(f"WHERE clause: {where_clause}") # Vytisknutí where_clause
         else:
             where_clause = ""
-
 
         sql_query_verohodnost_esai = "SELECT zkratka_txt, datovy_zdroj, indikator_cz, meritko, last_update, source_dat FROM metadata_dat"
         sql_query_funkce = f"SELECT AVG(hb_n) AS hodnota_hb, AVG(ctot_n) AS hodnota_uhlik, AVG(evap_n) AS hodnota_evapotranspirace FROM cernovice_esai_na_ctverec {where_clause};"
         sql_query_esai_hlavni = f"SELECT AVG(w_veget) AS \"Stav vegetace\", AVG(w_clim) AS \"Stav klimatu\", AVG(w_soil) AS \"Stav půdy\", AVG(w_mgm) AS \"Intenzita lidské činnosti\" FROM cernovice_esai_na_ctverec {where_clause};"
         sql_query_esai_podrobne = f"SELECT AVG(dra_w) AS \"Propustnost\", AVG(par_w) AS \"Matečná hornina\", AVG(dep_w) AS \"Hloubka půdy\", AVG(fra_w) AS \"Skeletovitost\", AVG(tex_w) AS \"Textura\", AVG(slo_w) AS \"Sklonitost svahu\", AVG(den_w) AS \"Hustota populace\", AVG(grw_w) AS \"Populační růst\", AVG(int_w) AS \"Intenzita využití půdy\", AVG(w_rai) AS \"Průměrný roční úhrn srážek\", AVG(arid_w) AS \"Index sucha\", AVG(asp_w) AS \"Orientace svahu\", AVG(dry_w) AS \"Odolnost vegetace vůči suchu\", AVG(ero_w) AS \"Schopnost vegetace bránit erozi\", AVG(pla_w) AS \"Pokryvnost vegetace\" FROM cernovice_esai_na_ctverec {where_clause};"
-        sql_query_esai = f"SELECT AVG(w_esai) AS \"Zranitelnost krajiny\" FROM cernovice_esai_na_ctverec {where_clause};"   
-        
+        sql_query_esai = f"SELECT AVG(w_esai) AS \"Zranitelnost krajiny\" FROM cernovice_esai_na_ctverec {where_clause};" 
+                
         
         try:
             cursor.execute(sql_query_verohodnost_esai)
@@ -186,13 +148,17 @@ def generate_report(uzemi, user_polygon_str, temata_str, podtemata_str):
             else:
                 return 'gray'  # Pro neznámé kategorie
             
-        def ziskej_data_pro_mapu(connection, tabulka, sloupec_hodnot, sloupec_geom='geom'):
+        def ziskej_data_pro_mapu(connection, tabulka, sloupec_hodnot, where_clause, sloupec_geom='geom'):
             """Získá data z databáze pro generování mapy."""
             cursor = connection.cursor()
             sql_query_mapy = f"""
                 SELECT ST_AsGeoJSON(ST_Transform({sloupec_geom}, 4326)) as geojson_str, {sloupec_hodnot}
-                FROM {tabulka} WHERE ST_IsValid({sloupec_geom});
+                FROM {tabulka} {where_clause} WHERE ST_IsValid({sloupec_geom});
             """
+            if where_clause:
+                sql_query_mapy = sql_query_mapy.replace(f" {where_clause} AND", " WHERE")
+            else:
+                sql_query_mapy = sql_query_mapy.replace(f" {where_clause} AND", " WHERE")
             cursor.execute(sql_query_mapy)
             data_mapy = cursor.fetchall()
             return data_mapy
@@ -250,7 +216,7 @@ def generate_report(uzemi, user_polygon_str, temata_str, podtemata_str):
 
         mapy_base64 = {}
         for indikator in indikatory:
-            data = ziskej_data_pro_mapu(connection, indikator["tabulka"], indikator["sloupec_hodnot"])
+            data = ziskej_data_pro_mapu(connection, indikator["tabulka"], indikator["sloupec_hodnot"], where_clause)
             mapy_base64[indikator["nazev"]] = generuj_mapu(data, indikator["nazev"], indikator["barvova_funkce"])
 
 
@@ -326,16 +292,7 @@ def generate_report(uzemi, user_polygon_str, temata_str, podtemata_str):
         image_base64 = base64.b64encode(buf.read()).decode()  # Zakóduje graf do base64
         buf.close()
 
-         # Přidání výpočtu GPS a MBR
-        cele_uzemi_geojson_path = "cesta/k/cele_uzemi.geojson" #Upravte cestu k souboru
-        gps_souradnice, mbr_extent = vypocitej_gps_mbr(uzemi, user_polygon_str, cele_uzemi_geojson_path)
 
-        if gps_souradnice and mbr_extent:
-            lokalita = f"GPS: {gps_souradnice}"
-            souradnice = mbr_extent
-        else:
-            lokalita = "Chyba při výpočtu souřadnic"
-            souradnice = "Chyba při výpočtu MBR"
 
         html = f"""
         <!DOCTYPE html>
@@ -423,8 +380,8 @@ def generate_report(uzemi, user_polygon_str, temata_str, podtemata_str):
         <body>
             <header>
                 <h1>Název reportu: Zranitelnost krajiny</h1>
-                <p>Lokalita: {lokalita} <br>
-                Souřadnice: {souradnice}   <br>
+                <p>Lokalita: lokalita<br>
+                Souřadnice: souradnice   <br>
                 Datum a čas generování: {timestamp} <br>
                 Unikatní identifikátor: {id}
                 </p>
@@ -663,4 +620,4 @@ if __name__ == "__main__":
         podtemata = sys.argv[4]
         generate_report(uzemi, user_polygon, temata, podtemata)
     else:
-        print("Chyba: Neplatný počet argumentů. Použití: python spousteni_georeport.py <uzemi> <user_polygon> <temata> <podtemata>")
+        print("Chyba: Neplatný počet argumentů. Použití: python spousteni_georeportu.py <uzemi> <user_polygon> <temata> <podtemata>")
