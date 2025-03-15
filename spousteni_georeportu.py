@@ -14,6 +14,36 @@ import sys
 from weasyprint import HTML
 import webbrowser
 
+def vypocitej_gps_mbr(uzemi, user_polygon_str, cele_uzemi_geojson_path):
+    """
+    Vypočítá GPS souřadnice a MBR extent pro dané území.
+    """
+    try:
+        if uzemi == "uzivatelske":
+            user_polygon_geojson = json.loads(user_polygon_str)
+            polygon = shape(user_polygon_geojson)
+        elif uzemi == "cele":
+            with open(cele_uzemi_geojson_path, 'r') as f:
+                cele_uzemi_geojson = json.load(f)
+            polygon = shape(cele_uzemi_geojson['features'][0]['geometry']) #upravit podle struktury cele_uzemi_geojson
+
+        else:
+            return None, None
+
+        # Výpočet MBR extent
+        minx, miny, maxx, maxy = polygon.bounds
+        mbr_extent = f"MBR: ({minx:.6f}, {miny:.6f}, {maxx:.6f}, {maxy:.6f})"
+
+        # Výpočet GPS souřadnic (centroid polygonu)
+        centroid = polygon.centroid
+        gps_souradnice = (centroid.y, centroid.x)
+
+        return gps_souradnice, mbr_extent
+
+    except (json.JSONDecodeError, KeyError, TypeError, FileNotFoundError) as e:
+        print(f"Chyba při výpočtu GPS a MBR: {e}")
+        return None, None
+
 def generate_report(uzemi, user_polygon_str, temata_str, podtemata_str):
 
     # Rozsahy kategorií pro náchylnost k degradaci
@@ -296,6 +326,17 @@ def generate_report(uzemi, user_polygon_str, temata_str, podtemata_str):
         image_base64 = base64.b64encode(buf.read()).decode()  # Zakóduje graf do base64
         buf.close()
 
+         # Přidání výpočtu GPS a MBR
+        cele_uzemi_geojson_path = "cesta/k/cele_uzemi.geojson" #Upravte cestu k souboru
+        gps_souradnice, mbr_extent = vypocitej_gps_mbr(uzemi, user_polygon_str, cele_uzemi_geojson_path)
+
+        if gps_souradnice and mbr_extent:
+            lokalita = f"GPS: {gps_souradnice}"
+            souradnice = mbr_extent
+        else:
+            lokalita = "Chyba při výpočtu souřadnic"
+            souradnice = "Chyba při výpočtu MBR"
+
         html = f"""
         <!DOCTYPE html>
         <html>
@@ -382,19 +423,24 @@ def generate_report(uzemi, user_polygon_str, temata_str, podtemata_str):
         <body>
             <header>
                 <h1>Název reportu: Zranitelnost krajiny</h1>
-                <p>Lokalita: GPS (, ) <br>
-                Souřadnice: MBR extentu  <br>
+                <p>Lokalita: {lokalita} <br>
+                Souřadnice: {souradnice}   <br>
                 Datum a čas generování: {timestamp} <br>
                 Unikatní identifikátor: {id}
                 </p>
             </header>
             <main>
                 <p> Tento report podává zprávu o degradaci krajiny na základě metody ESAI ....</p>
-
+        """
+        # Téma: Náchylnost krajiny
+        if "nachylnost" in temata:
+         html += f"""
                 <h2> Krok I: Náchylnost krajiny k degradaci </h2>
                 <p> Ve zvoleném území dosahuje výsledná hodnota náchylnosti k degradaci hodnoty <strong>{data_esai}</strong> a je klasifikována jako <span style="color: {rozsahy_kategorii[kod_kategorie_esai][3]};">{kategorie_esai}</span>.</p>
                 {tabulka_hlavni}
-
+        """
+        if "nachylnost_hodnoty" in podtemata:
+         html += f"""
                 <h3> Podřazená témata </h3>
                 {tabulka_podrobna}
 
@@ -403,12 +449,19 @@ def generate_report(uzemi, user_polygon_str, temata_str, podtemata_str):
         serazene_podrobne_esai = sorted(podrobne_esai, key=lambda x: x[1], reverse=True)
         nejhorsi_indikatory = [f"<em>{tema}</em>" for tema, _ in serazene_podrobne_esai[:3]]
         html += "<div class='indicator-box'> Nejhorší 3 indikátory v zájmovém území jsou: " + ", ".join(nejhorsi_indikatory) + ".</div>"
-
-        html += f"""
+        # Podtéma: Graf
+        if "nachylnost_grafy" in podtemata:
+         html += f"""
                 <div class="graf-container">
                 <h4>Graf: Zastoupení kategorií zranitelnosti (podrobné ESAI)</h4>
                 <img src="data:image/png;base64,{image_base64}" alt="Graf zastoupení kategorií (podrobné ESAI)">
                 </div>
+        """
+        # Podtéma: Mapa
+        if "nachylnost_mapy" in podtemata:
+         html += f"""<p> zde budou esai mapy</p>        """
+          
+         html += f"""
                 <h3> Věrohodnost dat </h3>
                 <table>
                     <tr>
@@ -440,70 +493,130 @@ def generate_report(uzemi, user_polygon_str, temata_str, podtemata_str):
             """
 
         html += f"""
-                </table>
+                </table>"""
+        # Téma: Funkčnost krajiny
+        if "funkcnost" in temata:
+            html += """
                 <h2> Krok II: Posouzení funkčnosti krajiny </h2>
                 <p> slouží k nalezení krajinných segmentů jejichž degradace bude mít velký/malý význam dopad na funkčnost krajiny </p>
-                <table>
-                    <tr>
-                        <th> </th>
-                        <th> Hodnota </th>
-                        <th> Kategorie </th>
-                    </tr>
-                    <tr>
-                        <td> Zásoba uhlíku ve vegetaci </td>
-                        <td> {hodnota_uhlik} </td>
-                        <td> Kategorie 1 </td>
-                    </tr>
-                    <tr>
-                        <td> Evapotranspirace </td>
-                        <td> {hodnota_evapotranspirace} </td>
-                        <td> Kategorie 1 </td>
-                    </tr>
-                    <tr>
-                        <td> Ekologická hodnota biotopu </td>
-                        <td> {hodnota_hb} </td>
-                        <td> Kategorie 1 </td>
-                    </tr>
-                    <tr>
-                        <td> Vodoretence </td>
-                        <td> Hodnota 1 </td>
-                        <td> Kategorie 1 </td>
-                    </tr>
-                    <tr>
-                        <td> Integrovaná hodnota </td>
-                        <td> --- </td>
-                        <td> Kategorie 1 </td>
-                    </tr>
-                </table>
-        """
-        # Vložení map do HTML
-        for nazev, img_base64 in mapy_base64.items():
-            html += f"""
-            <h2>{nazev}</h2>
-            <img src="data:image/png;base64,{img_base64}" width="800" height="600" alt="Mapa {nazev}">
             """
-
-        html += f"""
-            <h3> Věrohodnost dat </h3>
+            # Podtéma: Hodnoty
+            if "funkcnost_hodnoty" in podtemata:
+                html += f"""
                     <table>
                         <tr>
-                            <th> Název </th>
-                            <th> Datový zdroj geometrie/KB </th>
-                            <th> Garant </th>
-                            <th> Měřítko </th>
-                            <th> Rok aktualizace </th>
+                            <th> </th>
+                            <th> Hodnota </th>
+                            <th> Kategorie </th>
                         </tr>
                         <tr>
-                            <td> Indikátor 1 </td>
+                            <td> Zásoba uhlíku ve vegetaci </td>
+                            <td> {hodnota_uhlik} </td>
+                            <td> Kategorie 1 </td>
+                        </tr>
+                        <tr>
+                            <td> Evapotranspirace </td>
+                            <td> {hodnota_evapotranspirace} </td>
+                            <td> Kategorie 1 </td>
+                        </tr>
+                        <tr>
+                            <td> Ekologická hodnota biotopu </td>
+                            <td> {hodnota_hb} </td>
+                            <td> Kategorie 1 </td>
+                        </tr>
+                        <tr>
+                            <td> Vodoretence </td>
                             <td> Hodnota 1 </td>
-                            <td> Věrohodnost 1 </td>
-                            <td> meritko </td>
-                            <td> ROK </td>
+                            <td> Kategorie 1 </td>
+                        </tr>
+                        <tr>
+                            <td> Integrovaná hodnota </td>
+                            <td> --- </td>
+                            <td> Kategorie 1 </td>
                         </tr>
                     </table>
-                <h2> Krok III: Odolnost krajiny </h2>
-                <h2> Krok IV: Syntéza/lokalizace prioritních opatření </h2>
-                <h2> Krok V: Typizace prioritních opatření </h2>
+                """
+            # Podtéma: Graf
+            if "funkcnost_grafy" in podtemata:
+                html += "<p>zde patrří graf funkčnosti</p>"
+
+            # Podtéma: Mapa
+            if "funkcnost_mapy" in podtemata:
+                # Vložení map do HTML
+                for nazev, img_base64 in mapy_base64.items():
+                    html += f"""
+                        <h2>{nazev}</h2>
+                        <img src="data:image/png;base64,{img_base64}" width="800" height="600" alt="Mapa {nazev}">
+                    """
+
+            html += f"""
+                <h3> Věrohodnost dat </h3>
+                <table>
+                    <tr>
+                        <th> Název </th>
+                        <th> Datový zdroj geometrie/KB </th>
+                        <th> Garant </th>
+                        <th> Měřítko </th>
+                        <th> Rok aktualizace </th>
+                    </tr>
+                    <tr>
+                        <td> Indikátor 1 </td>
+                        <td> Hodnota 1 </td>
+                        <td> Věrohodnost 1 </td>
+                        <td> meritko </td>
+                        <td> ROK </td>
+                    </tr>
+                </table>
+            """
+        # Téma: Odolnost krajiny
+        if "odolnost" in temata:
+            html += "<h2> Krok III: Odolnost krajiny </h2>"
+
+            # Podtéma: Hodnoty
+            if "odolnost_hodnoty" in podtemata:
+                html += "<p>zde hodnoty odolnosti</p>"
+
+            # Podtéma: Graf
+            if "odolnost_grafy" in podtemata:
+                html += "<p>zde graf odolnosti</p>"
+
+            # Podtéma: Mapa
+            if "odolnost_mapy" in podtemata:
+                html += "<p>zde mapa odolnosti</p>"
+
+        # Téma: Syntéza
+        if "synteza" in temata:
+            html += "<h2> Krok IV: Syntéza/lokalizace prioritních opatření </h2>"
+
+            # Podtéma: Hodnoty
+            if "synteza_hodnoty" in podtemata:
+                html += "<p>zde hodnoty syntezy</p>"
+
+            # Podtéma: Graf
+            if "synteza_grafy" in podtemata:
+                html += "<p>zde graf syntezy</p>"
+
+            # Podtéma: Mapa
+            if "synteza_mapy" in podtemata:
+                html += "<p>zde mapa syntezy</p>"
+
+        # Téma: Typizace
+        if "typizace" in temata:
+            html += "<h2> Krok V: Typizace prioritních opatření </h2>"
+
+            # Podtéma: Hodnoty
+            if "typizace_hodnoty" in podtemata:
+                html += "<p>zde hodnoty typizace</p>"
+
+            # Podtéma: Graf
+            if "typizace_grafy" in podtemata:
+                html += "<p>zde graf typizace</p>"
+
+            # Podtéma: Mapa
+            if "typizace_mapy" in podtemata:
+                html += "<p>zde mapy typizace</p>"
+
+        html += """
             </main>
             <footer>
                 <div class="footer">
