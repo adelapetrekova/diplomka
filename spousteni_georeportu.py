@@ -194,7 +194,8 @@ def generate_report(uzemi, id_uzemi, temata_str, podtemata_str):
         except psycopg2.Error as e:
             print(f"Chyba při provádění SQL dotazu pro podrobné ESAI: {e}")
             data_esai_podrobne = None  # Nastavíme None, aby kód dále fungoval
-
+ 
+        
         # Funkce pro získání barvy podle kategorie (PRO MAPY)
         def get_color_for_category_map(category):
             if category == 1:
@@ -276,12 +277,77 @@ def generate_report(uzemi, id_uzemi, temata_str, podtemata_str):
             {"nazev": "Ekologická hodnota biotopu", "sloupec_hodnot": "kat_hb_vyp", "barvova_funkce": get_color_for_category_map},
         ]
 
-        mapy_base64 = {}
+        mapy_base64 = {} #pro klasické mapy
         for indikator in indikatory:
             data = ziskej_data_pro_mapu(connection, indikator["sloupec_hodnot"], where_clause)
             mapy_base64[indikator["nazev"]] = generuj_mapu(data, indikator["nazev"], indikator["barvova_funkce"])
 
 
+
+
+
+        # Funkce pro získání barvy podle kategorie (PRO MAPY ESAI)
+        def get_color_for_esai_polygon(hodnota, rozsahy_kategorii):
+            """Získá barvu pro polygon ESAI na základě hodnoty a sloupce."""
+            if hodnota is None:
+                return 'gray'  # Pro N/A
+            # Využití rozsahy_kategorii pro získání barvy
+            for kod, (minimum, maximum, _, barva) in rozsahy_kategorii.items():
+                if minimum is not None and maximum is not None:
+                    if minimum <= hodnota <= maximum:
+                        return barva
+            return 'gray'  # Pro neznámé hodnoty
+        
+        def generuj_mapu_esai(data, nazev_mapy, rozsahy_kategorii):
+            """Generuje mapu ESAI s legendou."""
+            geometries = []
+            colors = []
+            hodnoty = []
+            for geojson_str, hodnota in data:
+                try:
+                    geojson_data = json.loads(geojson_str)
+                    geom = shape(geojson_data)
+                    geometries.append(geom)
+                    color = get_color_for_esai_polygon(hodnota, rozsahy_kategorii)
+                    colors.append(color)
+                    hodnoty.append(hodnota)
+                except Exception as e:
+                    print(f"Chyba při zpracování GeoJSON: {e}")
+
+            gdf = gpd.GeoDataFrame(geometry=geometries, crs="EPSG:4326")
+            gdf = gdf.to_crs(epsg=3857)
+            gdf['color'] = colors
+            gdf['hodnota'] = hodnoty
+
+            fig, ax = plt.subplots(figsize=(10, 10))
+            gdf.plot(ax=ax, color=gdf['color'], edgecolor='grey', linewidth=0.2)
+            ax.set_axis_off()
+            ctx.add_basemap(ax, source=ctx.providers.OpenStreetMap.Mapnik, alpha=0.5)
+
+            # Vytvoření legendy s popisky a barvami z rozsahy_kategorii
+            patches = [mpatches.Patch(color=barva, label=nazev) for _, (_, _, nazev, barva) in rozsahy_kategorii.items()]
+            ax.legend(handles=patches, loc='lower right')
+
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png', bbox_inches='tight', pad_inches=0)
+            buf.seek(0)
+            img_base64 = base64.b64encode(buf.read()).decode()
+            buf.close()
+            return img_base64 
+
+        # Definice indikátorů a jejich nastavení
+        indikatory_esai = [
+            {"nazev": "Zranitelnost krajiny (ESAI)", "sloupec_hodnot": "w_esai", "barvova_funkce": get_color_for_esai_polygon},
+            {"nazev": "Stav vegetace", "sloupec_hodnot": "w_veget", "barvova_funkce": get_color_for_esai_polygon},
+            {"nazev": "Stav klimatu", "sloupec_hodnot": "w_clim", "barvova_funkce": get_color_for_esai_polygon},
+            {"nazev": "Stav půdy", "sloupec_hodnot": "w_soil", "barvova_funkce": get_color_for_esai_polygon},
+            {"nazev": "Intenzita lidské činnosti", "sloupec_hodnot": "w_mgm", "barvova_funkce": get_color_for_esai_polygon},
+        ]
+
+        mapy_esai_base64 = {} #pro mapy esai
+        for indikator in indikatory_esai:
+            data = ziskej_data_pro_mapu(connection, indikator["sloupec_hodnot"], where_clause)
+            mapy_esai_base64[indikator["nazev"]] = generuj_mapu_esai(data, indikator["nazev"], rozsahy_kategorii)
 
         if data_esai_hlavni is not None and len(data_esai_hlavni) == 4:
             hlavni_esai_kategorie = sorted(
@@ -296,6 +362,8 @@ def generate_report(uzemi, id_uzemi, temata_str, podtemata_str):
         [("Propustnost", data_esai_podrobne[0]), ("Matečná hornina", data_esai_podrobne[1]), ("Hloubka půdy", data_esai_podrobne[2]), ("Skeletovitost", data_esai_podrobne[3]), ("Textura", data_esai_podrobne[4]), ("Sklonitost svahu", data_esai_podrobne[5]), ("Hustota populace", data_esai_podrobne[6]), ("Populační růst", data_esai_podrobne[7]), ("Intenzita využití půdy", data_esai_podrobne[8]), ("Průměrný roční úhrn srážek", data_esai_podrobne[9]), ("Index sucha", data_esai_podrobne[10]), ("Orientace svahu", data_esai_podrobne[11]), ("Odolnost vegetace vůči suchu", data_esai_podrobne[12]), ("Schopnost vegetace bránit erozi", data_esai_podrobne[13]), ("Pokryvnost vegetace", data_esai_podrobne[14])],
         key=lambda x: x[1], reverse=True
         )
+
+
         if data_funkce:
             hodnota_hb, hodnota_uhlik, hodnota_evapotranspirace = data_funkce
         else:
@@ -478,9 +546,14 @@ def generate_report(uzemi, id_uzemi, temata_str, podtemata_str):
         """
         # Podtéma: Mapa
         if "nachylnost_mapy" in podtemata:
-         html += f"""<p> zde budou esai mapy</p>        """
-          
-         html += f"""
+
+            for nazev, img_base64 in mapy_esai_base64.items():
+                html += f"""
+                    <h2>{nazev}</h2>
+                    <img src="data:image/png;base64,{img_base64}" width="800" height="600" alt="Mapa {nazev}">
+                """
+
+        html += f"""
                 <h3> Věrohodnost dat </h3>
                 <table>
                     <tr>
