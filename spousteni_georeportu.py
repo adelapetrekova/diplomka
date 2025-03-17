@@ -14,7 +14,42 @@ import sys
 from weasyprint import HTML
 import webbrowser
 
+uzemi = sys.argv[1]
+user_polygon_arg = sys.argv[2]
+temata_arg = sys.argv[3]
+podtemata_arg = sys.argv[4]
+
+# Přidáno: Výpis argumentů
+print('Argumenty:', sys.argv)
+
+print(f"Hodnota user_polygon v skriptu: {user_polygon_arg}")
+print(f"Hodnota uzemi v skriptu: {uzemi}")
+
+if user_polygon_arg:
+    user_polygon_str = user_polygon_arg.strip()  # Odstranění mezer a prázdných znaků
+    if user_polygon_str:
+        user_polygon = [int(id) for id in user_polygon_str.split(',')]
+        where_clause = "WHERE OBJECTID IN (" + ",".join(map(str, user_polygon)) + ")"
+        print(f"user_polygon: {user_polygon}")
+        print(f"where_clause: {where_clause}")
+    else:
+        user_polygon = []
+        where_clause = ""
+        print("Upozornění: user_polygon je prázdný!")
+        print(f"user_polygon: {user_polygon}")
+        print(f"where_clause: {where_clause}")
+else:
+    user_polygon = []
+    where_clause = ""
+    print("Upozornění: user_polygon je prázdný!")
+    print(f"user_polygon: {user_polygon}")
+    print(f"where_clause: {where_clause}")
+
 def generate_report(uzemi, id_uzemi, temata_str, podtemata_str):
+    print(f"Hodnota user_polygon v skriptu: {id_uzemi}")
+    print(f"Hodnota uzemi v skriptu: {uzemi}")
+    if not id_uzemi:
+        print("Upozornění: user_polygon je prázdný!")
 
     # Rozsahy kategorií pro náchylnost k degradaci
     rozsahy_kategorii = {
@@ -76,6 +111,8 @@ def generate_report(uzemi, id_uzemi, temata_str, podtemata_str):
     host = 'localhost'
     port = '5432'
 
+    connection = None
+    cursor = None
     try:
         connection = psycopg2.connect(dbname=dbname, user=user, password=password, host=host, port=port)
         cursor = connection.cursor()
@@ -85,11 +122,36 @@ def generate_report(uzemi, id_uzemi, temata_str, podtemata_str):
         temata = temata_str.split(',')
         podtemata = podtemata_str.split(',')
 
-        if uzemi == 'uzivatelske' and id_uzemi:
-            where_clause = f"WHERE id = {id_uzemi}"
-            print(f"WHERE clause: {where_clause}") # Vytisknutí where_clause
+        if uzemi == 'uzivatelske' and user_polygon:
+            ids_uzemi = user_polygon
+            print(f"user_polygon: {user_polygon}")
+            print(f"ids_uzemi: {ids_uzemi}")
+
+            # Ověření, zda ID existují v databázi (s iterací)
+            valid_ids = []
+            for id_uzemi in ids_uzemi:
+                try:
+                    cursor.execute("SELECT id FROM cernovice_esai_na_ctverec WHERE id = %s", (id_uzemi,))
+                    result = cursor.fetchone()
+                    if result:
+                        valid_ids.append(id_uzemi)
+                        print(f"ID {id_uzemi} nalezeno v databázi.")  # Ladící výpis
+                    else:
+                        print(f"Upozornění: ID {id_uzemi} nebylo nalezeno v databázi.")
+                except ValueError:
+                    print(f"Upozornění: Neplatné ID {id_uzemi}.")
+
+            if valid_ids:
+                where_clause = f"WHERE id IN ({','.join(map(str, valid_ids))})"
+                print(f"where_clause: {where_clause}")
+            else:
+                where_clause = ""
+                print("Upozornění: Žádné platné ID nebyly nalezeny. Bude použit celý dataset.")
         else:
+            ids_uzemi = []
             where_clause = ""
+            print(f"user_polygon: {user_polygon}")
+            print(f"where_clause: {where_clause}")
 
         sql_query_verohodnost_esai = "SELECT zkratka_txt, datovy_zdroj, indikator_cz, meritko, last_update, source_dat FROM metadata_dat"
         sql_query_funkce = f"SELECT AVG(hb_n) AS hodnota_hb, AVG(ctot_n) AS hodnota_uhlik, AVG(evap_n) AS hodnota_evapotranspirace FROM cernovice_esai_na_ctverec {where_clause};"
@@ -148,17 +210,17 @@ def generate_report(uzemi, id_uzemi, temata_str, podtemata_str):
             else:
                 return 'gray'  # Pro neznámé kategorie
             
-        def ziskej_data_pro_mapu(connection, tabulka, sloupec_hodnot, where_clause, sloupec_geom='geom'):
+        def ziskej_data_pro_mapu(connection, sloupec_hodnot, where_clause, sloupec_geom='geom'):
             """Získá data z databáze pro generování mapy."""
             cursor = connection.cursor()
             sql_query_mapy = f"""
                 SELECT ST_AsGeoJSON(ST_Transform({sloupec_geom}, 4326)) as geojson_str, {sloupec_hodnot}
-                FROM {tabulka} {where_clause} WHERE ST_IsValid({sloupec_geom});
+                FROM cernovice_esai_na_ctverec {where_clause} WHERE ST_IsValid({sloupec_geom});
             """
             if where_clause:
-                sql_query_mapy = sql_query_mapy.replace(f" {where_clause} AND", " WHERE")
+                sql_query_mapy = sql_query_mapy.replace(f" {where_clause} WHERE", " WHERE")
             else:
-                sql_query_mapy = sql_query_mapy.replace(f" {where_clause} AND", " WHERE")
+                sql_query_mapy = sql_query_mapy.replace(f" {where_clause} WHERE", " WHERE")
             cursor.execute(sql_query_mapy)
             data_mapy = cursor.fetchall()
             return data_mapy
@@ -209,14 +271,14 @@ def generate_report(uzemi, id_uzemi, temata_str, podtemata_str):
 
         # Definice indikátorů a jejich nastavení
         indikatory = [
-            {"nazev": "Evapotranspirace", "tabulka": "evapotranspirace", "sloupec_hodnot": "evap_k", "barvova_funkce": get_color_for_category_map},
-            {"nazev": "Zásoba uhlíku", "tabulka": "uhlik", "sloupec_hodnot": "ctot_kat", "barvova_funkce": get_color_for_category_map},
-            {"nazev": "Ekologická hodnota biotopu", "tabulka": "hb", "sloupec_hodnot": "hb_kat", "barvova_funkce": get_color_for_category_map},
+            {"nazev": "Evapotranspirace", "sloupec_hodnot": "kat_evap_v", "barvova_funkce": get_color_for_category_map},
+            {"nazev": "Zásoba uhlíku", "sloupec_hodnot": "kat_ctot_v", "barvova_funkce": get_color_for_category_map},
+            {"nazev": "Ekologická hodnota biotopu", "sloupec_hodnot": "kat_hb_vyp", "barvova_funkce": get_color_for_category_map},
         ]
 
         mapy_base64 = {}
         for indikator in indikatory:
-            data = ziskej_data_pro_mapu(connection, indikator["tabulka"], indikator["sloupec_hodnot"], where_clause)
+            data = ziskej_data_pro_mapu(connection, indikator["sloupec_hodnot"], where_clause)
             mapy_base64[indikator["nazev"]] = generuj_mapu(data, indikator["nazev"], indikator["barvova_funkce"])
 
 
@@ -595,29 +657,59 @@ def generate_report(uzemi, id_uzemi, temata_str, podtemata_str):
         print(f"Chyba při zpracování databáze nebo generování mapy: {error}")
 
     finally:
-        if connection:
+        if cursor:
             cursor.close()
+        if connection:
             connection.close()
 
+
     # Vytvoření HTML souboru
-    with open("index.html", "w", encoding="utf-8") as f:
-        f.write(f"""{html}""")
+    if 'html' in locals(): # kontrola jestli html existuje.
+        with open("index.html", "w", encoding="utf-8") as f:
+            f.write(f"""{html}""")
 
-    print("HTML report byl úspěšně vygenerován.")
+        print("HTML report byl úspěšně vygenerován.")
 
-    # output html as a PDF
-    HTML("index.html").write_pdf("index.pdf")
+        # output html as a PDF
+        HTML("index.html").write_pdf("index.pdf")
 
-    print("Generated index.pdf")
-    #otevření pdf souboru
-    webbrowser.open("index.pdf")
+        print("Generated index.pdf")
+        #otevření pdf souboru
+        webbrowser.open("index.pdf")
+    else:
+        print("Generování html souboru bylo přerušeno chybou")
 
 if __name__ == "__main__":
     if len(sys.argv) == 5:
         uzemi = sys.argv[1]
-        user_polygon = sys.argv[2]
+        user_polygon_arg = sys.argv[2]
         temata = sys.argv[3]
         podtemata = sys.argv[4]
+
+        print('Argumenty:', sys.argv)
+        print(f"Hodnota user_polygon v skriptu: {user_polygon_arg}")
+        print(f"Hodnota uzemi v skriptu: {uzemi}")
+
+        if user_polygon_arg:
+            user_polygon_str = user_polygon_arg.strip()  # Odstranění mezer a prázdných znaků
+            if user_polygon_str:
+                user_polygon = [int(id) for id in user_polygon_str.split(',')]
+                where_clause = "WHERE id IN (" + ",".join(map(str, user_polygon)) + ")"
+                print(f"user_polygon: {user_polygon}")
+                print(f"where_clause: {where_clause}")
+            else:
+                user_polygon = []
+                where_clause = ""
+                print("Upozornění: user_polygon je prázdný!")
+                print(f"user_polygon: {user_polygon}")
+                print(f"where_clause: {where_clause}")
+        else:
+            user_polygon = []
+            where_clause = ""
+            print("Upozornění: user_polygon je prázdný!")
+            print(f"user_polygon: {user_polygon}")
+            print(f"where_clause: {where_clause}")
+
         generate_report(uzemi, user_polygon, temata, podtemata)
     else:
         print("Chyba: Neplatný počet argumentů. Použití: python spousteni_georeportu.py <uzemi> <user_polygon> <temata> <podtemata>")

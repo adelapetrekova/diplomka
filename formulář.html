@@ -211,6 +211,7 @@
     </footer>
 
     <script>
+        let vybraneCtverce = []; // Inicializace prázdného pole
         require([
             "esri/config",
             "esri/portal/Portal",
@@ -278,7 +279,7 @@
 
                         webmap.add(ctverceLayer);
 
-                        let vybraneCtverce = [];
+                        vybraneCtverce = [];
                         let vybraneGrafiky = [];
 
                         const highlightLayer = new GraphicsLayer();
@@ -330,7 +331,7 @@
                                 });
                             }
                         });
-
+                        
                         var graphicsLayer = new GraphicsLayer();
                         webmap.add(graphicsLayer);
 
@@ -356,11 +357,39 @@
                 });
 
                 document.getElementById('georeportForm').addEventListener('submit', function(event) {
+                    event.preventDefault();
                     const uzemi = document.querySelector('input[name="uzemi"]:checked').value;
+                    let userPolygonValue = '';
                     if (uzemi === "uzivatelske" && vybraneCtverce.length > 0) {
-                        // Uložení pole vybraneCtverce jako řetězec oddělený čárkami
-                        document.getElementById('userPolygon').value = vybraneCtverce.join(',');
+                        userPolygonValue = vybraneCtverce.join(',');
+                        // Aktualizace hodnoty hidden inputu
+                        document.getElementById('userPolygon').value = userPolygonValue;
                     }
+                    console.log("Vybrané čtverce:", vybraneCtverce); // Ověření vybraneCtverce
+
+                    // Přidání vybraneCtverce do FormData jako skrytý input
+                    let hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'vybraneCtverce'; // Název, pod kterým budou data odeslána
+                    hiddenInput.value = vybraneCtverce.join(','); // Převedení pole na řetězec oddělený čárkami
+                    this.appendChild(hiddenInput); // Přidání skrytého inputu do formuláře
+
+                    const formData = new FormData(this); // Použití FormData z formuláře
+
+                    fetch('generate_report_2.php', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.text())
+                    .then(data => {
+                        console.log(data);
+                        document.body.innerHTML = data; // Nahrazení obsahu stránky odpovědí ze serveru
+                    })
+                    .catch(error => {
+                        console.error('Chyba:', error);
+                        alert('Došlo k chybě při odesílání formuláře.'); // Zobrazení chybové zprávy uživateli
+                    });
+                
                 });
             });
         });

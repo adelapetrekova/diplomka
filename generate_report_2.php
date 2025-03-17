@@ -1,10 +1,19 @@
 <?php
+var_dump($_POST); // Přidáno: výpis celého $_POST
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $uzemi = $_POST["uzemi"];
-    $user_polygon_string = isset($_POST["userPolygon"]) ? $_POST["userPolygon"] : ""; // Získání řetězce
+    $user_polygon_string = isset($_POST["userPolygon"]) ? $_POST["userPolygon"] : "";
 
-    // Rozdělení řetězce na pole, pokud není prázdný
-    $user_polygon = !empty($user_polygon_string) ? explode(",", $user_polygon_string) : [];
+    // Přidáno: Výpis $_POST['userPolygon']
+    var_dump($_POST['userPolygon']);
+
+    if (!empty($user_polygon_string)) {
+        $user_polygon = explode(",", $user_polygon_string);
+        $user_polygon_arg = implode(",", $user_polygon);
+    } else {
+        $user_polygon = [];
+        $user_polygon_arg = "";
+    }
 
     $temata = isset($_POST["tema"]) ? $_POST["tema"] : [];
     $podtemata = [];
@@ -36,15 +45,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     echo "Území: " . $uzemi . "<br>";
-    echo "Polygon: " . implode(", ", $user_polygon) . "<br>"; // Zobrazení pole
+    echo "Polygon: " . implode(", ", $user_polygon) . "<br>";
     echo "Témata: " . implode(", ", $temata) . "<br>";
     echo "Podtémata: " . implode(", ", $podtemata) . "<br><br>";
 
-    // Převedení pole na řetězec pro Python skript
-    $user_polygon_arg = implode(",", $user_polygon);
+    if (!empty($user_polygon_arg)) {
+        $command = "python spousteni_georeportu.py " . escapeshellarg($uzemi) . " " . escapeshellarg($user_polygon_arg) . " " . escapeshellarg(implode(",", $temata)) . " " . escapeshellarg(implode(",", $podtemata));
+        exec($command, $output, $return_var);
+    } else {
+        $command = "python spousteni_georeportu.py " . escapeshellarg($uzemi) . " '' " . escapeshellarg(implode(",", $temata)) . " " . escapeshellarg(implode(",", $podtemata));
+        exec($command, $output, $return_var);
+    }
 
-    $command = "python spousteni_georeportu.py " . escapeshellarg($uzemi) . " " . escapeshellarg($user_polygon_arg) . " " . escapeshellarg(implode(",", $temata)) . " " . escapeshellarg(implode(",", $podtemata));
-    exec($command, $output, $return_var);
+    // Přidáno: Výpis příkazu
+    echo 'Příkaz: ' . $command . '<br>';
 
     echo "Výstup Python skriptu:<br>";
     foreach ($output as $line) {
