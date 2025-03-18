@@ -14,10 +14,21 @@ import sys
 from weasyprint import HTML
 import webbrowser
 
-uzemi = sys.argv[1]
-user_polygon_arg = sys.argv[2]
-temata_arg = sys.argv[3]
-podtemata_arg = sys.argv[4]
+# Nastavení výchozích hodnot pro argumenty
+uzemi = ""
+user_polygon_arg = ""
+temata_arg = ""
+podtemata_arg = ""
+
+# Kontrola počtu argumentů a nastavení hodnot
+if len(sys.argv) >= 2:
+    uzemi = sys.argv[1]
+if len(sys.argv) >= 3:
+    user_polygon_arg = sys.argv[2]
+if len(sys.argv) >= 4:
+    temata_arg = sys.argv[3]
+if len(sys.argv) >= 5:
+    podtemata_arg = sys.argv[4]
 
 # Přidáno: Výpis argumentů
 print('Argumenty:', sys.argv)
@@ -25,26 +36,32 @@ print('Argumenty:', sys.argv)
 print(f"Hodnota user_polygon v skriptu: {user_polygon_arg}")
 print(f"Hodnota uzemi v skriptu: {uzemi}")
 
-if user_polygon_arg:
-    user_polygon_str = user_polygon_arg.strip()  # Odstranění mezer a prázdných znaků
-    if user_polygon_str:
-        user_polygon = [int(id) for id in user_polygon_str.split(',')]
-        where_clause = "WHERE OBJECTID IN (" + ",".join(map(str, user_polygon)) + ")"
-        print(f"user_polygon: {user_polygon}")
-        print(f"where_clause: {where_clause}")
+if uzemi == 'uzivatelske':
+    if user_polygon_arg:
+        user_polygon_str = user_polygon_arg.strip()  # Odstranění mezer a prázdných znaků
+        if user_polygon_str:
+            user_polygon = [int(id) for id in user_polygon_str.split(',')]
+            where_clause = "WHERE OBJECTID IN (" + ",".join(map(str, user_polygon)) + ")"
+            print(f"user_polygon: {user_polygon}")
+            print(f"where_clause: {where_clause}")
+        else:
+            user_polygon = []
+            where_clause = ""
+            print("Upozornění: user_polygon je prázdný!")
+            print(f"user_polygon: {user_polygon}")
+            print(f"where_clause: {where_clause}")
     else:
         user_polygon = []
         where_clause = ""
         print("Upozornění: user_polygon je prázdný!")
         print(f"user_polygon: {user_polygon}")
         print(f"where_clause: {where_clause}")
-else:
+elif uzemi == 'cele':
     user_polygon = []
     where_clause = ""
-    print("Upozornění: user_polygon je prázdný!")
-    print(f"user_polygon: {user_polygon}")
-    print(f"where_clause: {where_clause}")
-
+    print("Zpracovávám celé území")
+else:
+    print("Chyba: Neznámý typ území")
 def generate_report(uzemi, id_uzemi, temata_str, podtemata_str):
     print(f"Hodnota user_polygon v skriptu: {id_uzemi}")
     print(f"Hodnota uzemi v skriptu: {uzemi}")
@@ -753,35 +770,42 @@ def generate_report(uzemi, id_uzemi, temata_str, podtemata_str):
         print("Generování html souboru bylo přerušeno chybou")
 
 if __name__ == "__main__":
-    if len(sys.argv) == 5:
+    if len(sys.argv) >= 4:  # Upravená kontrola počtu argumentů
         uzemi = sys.argv[1]
         user_polygon_arg = sys.argv[2]
         temata = sys.argv[3]
-        podtemata = sys.argv[4]
+        podtemata = sys.argv[4] if len(sys.argv) > 4 else "" # Podtemata jsou volitelné
 
         print('Argumenty:', sys.argv)
         print(f"Hodnota user_polygon v skriptu: {user_polygon_arg}")
         print(f"Hodnota uzemi v skriptu: {uzemi}")
-
-        if user_polygon_arg:
-            user_polygon_str = user_polygon_arg.strip()  # Odstranění mezer a prázdných znaků
-            if user_polygon_str:
-                user_polygon = [int(id) for id in user_polygon_str.split(',')]
-                where_clause = "WHERE id IN (" + ",".join(map(str, user_polygon)) + ")"
-                print(f"user_polygon: {user_polygon}")
-                print(f"where_clause: {where_clause}")
+        if uzemi == 'uzivatelske':
+            if user_polygon_arg:
+                user_polygon_str = user_polygon_arg.strip()  # Odstranění mezer a prázdných znaků
+                if user_polygon_str:
+                    user_polygon = [int(id) for id in user_polygon_str.split(',')]
+                    where_clause = "WHERE OBJECTID IN (" + ",".join(map(str, user_polygon)) + ")"
+                    print(f"user_polygon: {user_polygon}")
+                    print(f"where_clause: {where_clause}")
+                else:
+                    user_polygon = []
+                    where_clause = ""
+                    print("Upozornění: user_polygon je prázdný!")
+                    print(f"user_polygon: {user_polygon}")
+                    print(f"where_clause: {where_clause}")
             else:
                 user_polygon = []
                 where_clause = ""
                 print("Upozornění: user_polygon je prázdný!")
                 print(f"user_polygon: {user_polygon}")
                 print(f"where_clause: {where_clause}")
-        else:
+
+        elif uzemi == 'cele':
             user_polygon = []
             where_clause = ""
-            print("Upozornění: user_polygon je prázdný!")
-            print(f"user_polygon: {user_polygon}")
-            print(f"where_clause: {where_clause}")
+            print("Zpracovávám celé území")
+        else:
+            print("Chyba: Neznámý typ území")
 
         generate_report(uzemi, user_polygon, temata, podtemata)
     else:
