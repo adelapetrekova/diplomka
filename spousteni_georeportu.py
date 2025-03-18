@@ -16,26 +16,32 @@ import webbrowser
 
 # Nastavení výchozích hodnot pro argumenty
 uzemi = ""
-user_polygon_arg = ""
-temata_arg = ""
-podtemata_arg = ""
+user_polygon = ""
+temata = ""
+podtemata = ""
 
 # Kontrola počtu argumentů a nastavení hodnot
 if len(sys.argv) >= 2:
     uzemi = sys.argv[1]
-
-if uzemi == 'uzivatelske':
-    if len(sys.argv) >= 3:
-        user_polygon_arg = sys.argv[2]
-    if len(sys.argv) >= 4:
-        temata_arg = sys.argv[3]
-    if len(sys.argv) >= 5:
-        podtemata_arg = sys.argv[4]
-elif uzemi == 'cele':
-    if len(sys.argv) >= 3:
-        temata_arg = sys.argv[2]
-    if len(sys.argv) >= 4:
-        podtemata_arg = sys.argv[3]
+if len(sys.argv) >= 3:
+    user_polygon = sys.argv[2]
+if len(sys.argv) >= 4:
+    temata = sys.argv[3]
+if len(sys.argv) >= 5:
+    podtemata = sys.argv[4]
+#pro využizí když se volá z příkazového řádku
+#if uzemi == 'uzivatelske':
+ #   if len(sys.argv) >= 3:
+  #      user_polygon = sys.argv[2]
+   # if len(sys.argv) >= 4:
+    #    temata = sys.argv[3]
+    #if len(sys.argv) >= 5:
+     #   podtemata = sys.argv[4]
+#elif uzemi == 'cele':
+ #   if len(sys.argv) >= 3:
+  #      temata = sys.argv[2]
+   # if len(sys.argv) >= 4:
+    #    podtemata = sys.argv[3]
 else:
     print("Chyba: Neznámý typ území")
     sys.exit()  # Ukončíme skript, pokud je typ území neznámý
@@ -44,12 +50,12 @@ else:
 print('Argumenty:', sys.argv)
 
 print(f"Hodnota uzemi v skriptu: {uzemi}")
-print(f"Hodnota user_polygon v skriptu: {user_polygon_arg}")
-print(f"Hodnota temata v skriptu: {temata_arg}")
+print(f"Hodnota user_polygon v skriptu: {user_polygon}")
+print(f"Hodnota temata v skriptu: {temata}")
 
 if uzemi == 'uzivatelske':
-    if user_polygon_arg:
-        user_polygon_str = user_polygon_arg.strip()  # Odstranění mezer a prázdných znaků
+    if user_polygon:
+        user_polygon_str = user_polygon.strip()  # Odstranění mezer a prázdných znaků
         if user_polygon_str:
             user_polygon = [int(id) for id in user_polygon_str.split(',')]
             where_clause = "WHERE OBJECTID IN (" + ",".join(map(str, user_polygon)) + ")"
@@ -69,12 +75,12 @@ if uzemi == 'uzivatelske':
         print(f"where_clause: {where_clause}")
 elif uzemi == 'cele':
     user_polygon = []
-    user_polygon_arg = []
     where_clause = ""
     print("Zpracovávám celé území")
 else:
     print("Chyba: Neznámý typ území")
-def generate_report(uzemi, id_uzemi, temata_str, podtemata_str):
+
+def generate_report(uzemi, id_uzemi, temata, podtemata):
     print(f"Hodnota user_polygon v skriptu: {id_uzemi}")
     print(f"Hodnota uzemi v skriptu: {uzemi}")
     if not id_uzemi:
@@ -148,8 +154,8 @@ def generate_report(uzemi, id_uzemi, temata_str, podtemata_str):
         print("Připojení k databázi bylo úspěšné")
 
         # Zpracování témat a podtémat
-        temata = temata_str.split(',')
-        podtemata = podtemata_str.split(',')
+        temata = temata.split(',')
+        podtemata = podtemata.split(',')
 
         if uzemi == 'uzivatelske' and user_polygon:
             ids_uzemi = user_polygon
@@ -782,7 +788,7 @@ def generate_report(uzemi, id_uzemi, temata_str, podtemata_str):
         print("Generování html souboru bylo přerušeno chybou")
 
 if __name__ == "__main__":
-    generate_report(uzemi, user_polygon, temata_arg, podtemata_arg)
+    generate_report(uzemi, user_polygon, temata, podtemata)
 else:
     print("Chyba: Neplatný počet argumentů. Použití: python spousteni_georeportu.py <uzemi> <user_polygon> <temata> <podtemata>")
 
